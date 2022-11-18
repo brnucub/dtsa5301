@@ -1,0 +1,71 @@
+---
+title: "Assignment 2"
+output: pdf_document
+date: "2022-11-03"
+author: B. Nunez
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(e1071)
+```
+
+## R Markdown
+
+NOTE that tidyverse and e1071 packages must be installed.
+
+Collecting the data:
+
+```{r data, echo=FALSE}
+df <- read_csv("NYPD_Shooting_Incident_Data__Historic_.csv")
+```
+
+Cleaning up and formatting the data: remove rows where the age and race values are empty, then summarize the data.
+
+```{r cars, echo=FALSE}
+summary(df)
+data_by_age <- df$PERP_AGE_GROUP
+data_by_race <- df$PERP_RACE
+data_by_age <- data_by_age[!is.na(data_by_age)]
+age_table <- table(data_by_age)
+age_table <- age_table[!(names(age_table) %in% c("940","UNKNOWN"))]
+data_by_race <- data_by_race[!is.na(data_by_race)]
+race_table <- table(data_by_race)
+dfx <- df[c("PERP_RACE", "VIC_RACE")]
+dfx$PERP_RACE <- as.factor(dfx$PERP_RACE)
+dfx$VIC_RACE <- as.factor(dfx$VIC_RACE)
+df <- na.omit(df)
+```
+
+## Including Plots
+
+Visualizations:
+
+```{r barplot, echo=FALSE}
+barplot(age_table, main="Perpetrator Age Ranges", xlab="Age Range", ylab="Count")
+barplot(race_table, main="Perpetrator Race", xlab="Race", ylab="Count", cex.names=0.5)
+```
+
+Note that erroneous or unknown value data points were removed in the visualizations. We can see that the perpetrator in the crime is disproportionately inclined to one race and age.
+
+We create a model to predict victim race based on perpetrator race:
+
+```{r model, echo=FALSE}
+set.seed(100)
+dfx <- dfx[sample(1:nrow(dfx)), ]
+split <- round(nrow(dfx) * 0.80)
+train <- dfx[1:split, ]
+test <- dfx[(split + 1):nrow(dfx), ]
+nb <- naiveBayes(PERP_RACE ~ VIC_RACE, data = train)
+pred <- predict(nb, test)
+tab1 <- table(pred, test$VIC_RACE)
+print(tab1)
+sum(diag(tab1)) / sum(tab1)
+```
+
+This shows that the model predicts the victim race based on the perpetrator race with about 74% accuracy.
+
+Sources of bias: Possibly the significant omission of unknown and erroneous data points that may have changed the model in some way, were their true values to be known. 
+Also, there too many black perpetrator / victim data points, so that the model is biased in such a way that it is difficult to tell if there is a statistically significant relationship between races in general, versus only black perpetrator / victim data points.
+
